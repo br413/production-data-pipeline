@@ -56,6 +56,9 @@ jobs:
         env:
           AIRFLOW_HOME: /tmp/airflow
 
+      - name: Verify dbt project
+        run: dbt ls --project-dir dbt --profiles-dir dbt --target ci
+
       - name: Run tests
         run: python -m pytest -q
         env:

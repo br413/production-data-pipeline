@@ -1,12 +1,17 @@
 import os
+import subprocess
 from pathlib import Path
 
+import psycopg
 import pytest
 
 from src.pipeline.ingestion import ingest_incremental
 from src.pipeline.models import EventRecord
 from src.pipeline.run_dbt import run_transforms
 from src.pipeline.storage.postgres import PostgresCheckpointStore, PostgresLandingStore
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DBT_DIR = PROJECT_ROOT / "dbt"
 
 
 def fetch_fixture(cursor: str):
@@ -22,11 +27,33 @@ def fetch_fixture(cursor: str):
     return pages.get(cursor, ([], ""))
 
 
+def _dbt_env(target: str = "ci") -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "DBT_TARGET": target,
+            "DBT_PROFILES_DIR": str(DBT_DIR),
+        }
+    )
+    return env
+
+
+def _list_relations(database_url: str) -> list[tuple[str, str, str]]:
+    with psycopg.connect(database_url) as conn:
+        return conn.execute(
+            """
+            SELECT n.nspname, c.relname, c.relkind
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname IN ('silver', 'gold', 'bronze')
+              AND c.relkind IN ('r', 'v', 'm')
+            ORDER BY 1, 2
+            """
+        ).fetchall()
+
+
 @pytest.mark.integration
 def test_dbt_models_build_from_landed_events(database_url: str) -> None:
-    os.environ["DBT_TARGET"] = "ci"
-    os.environ["DBT_PROFILES_DIR"] = str(Path(__file__).resolve().parents[1] / "dbt")
-
     checkpoint_store = PostgresCheckpointStore(database_url, "test-dbt-flow")
     landing_store = PostgresLandingStore(database_url)
 
@@ -38,9 +65,21 @@ def test_dbt_models_build_from_landed_events(database_url: str) -> None:
     )
     assert len(ingested) == 2
 
+    ls = subprocess.run(
+        ["dbt", "ls", "--project-dir", str(DBT_DIR), "--profiles-dir", str(DBT_DIR)],
+        env=_dbt_env("ci"),
+        capture_output=True,
+        text=True,
+    )
+    assert ls.returncode == 0, ls.stderr or ls.stdout
+    assert "stg_events" in ls.stdout, ls.stdout
+
     run_transforms(target="ci")
 
-    import psycopg
+    relations = _list_relations(database_url)
+    relation_names = {(schema, name) for schema, name, _ in relations}
+    assert ("silver", "stg_events") in relation_names, f"relations: {relations}"
+    assert ("gold", "fct_daily_event_metrics") in relation_names, f"relations: {relations}"
 
     with psycopg.connect(database_url) as conn:
         silver_count = conn.execute("SELECT COUNT(*) FROM silver.stg_events").fetchone()[0]

@@ -1,3 +1,5 @@
+{{ config(materialized='view', schema='silver') }}
+
 select
     event_id,
     occurred_at,

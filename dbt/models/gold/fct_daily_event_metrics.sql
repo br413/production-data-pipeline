@@ -1,3 +1,5 @@
+{{ config(materialized='table', schema='gold') }}
+
 select
     date_trunc('day', occurred_at) as event_date,
     count(*) as event_count,
