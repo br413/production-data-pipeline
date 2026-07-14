@@ -26,14 +26,14 @@ See [`docs/architecture.md`](docs/architecture.md) for component boundaries and 
 
 ## Current capabilities
 
-- [x] Incremental ingestion with JSON-file checkpoint store
+- [x] Incremental ingestion with JSON-file or PostgreSQL checkpoint store
 - [x] Idempotent record handling via stable event IDs
-- [x] Unit tests for ingestion and checkpoint logic
+- [x] PostgreSQL bronze landing layer with Docker Compose
+- [x] Data-quality checks: schema, required fields, uniqueness, freshness
+- [x] Unit and integration tests with CI PostgreSQL service
 - [x] CI workflow on push and pull request
-- [ ] PostgreSQL landing layer (Docker Compose scaffold included)
 - [ ] dbt transformation models
 - [ ] Airflow orchestration DAG
-- [ ] Data-quality test suite
 - [ ] Monitoring and retry runbook
 
 ## Technology
@@ -41,7 +41,7 @@ See [`docs/architecture.md`](docs/architecture.md) for component boundaries and 
 | Area | Selection |
 |------|-----------|
 | Language | Python 3.12 |
-| Storage | PostgreSQL (planned), local JSON checkpoints |
+| Storage | PostgreSQL bronze + metadata, optional JSON checkpoints |
 | Orchestration | Airflow (planned) |
 | Transformation | dbt (planned) |
 | Testing | pytest |
@@ -71,10 +71,17 @@ pip install -r requirements.txt
 pytest
 ```
 
-Run the sample ingestion:
+Run the sample ingestion (file checkpoints):
 
 ```bash
 python -m src.pipeline.ingestion --source sample --checkpoint .checkpoints/sample.json
+```
+
+Run with PostgreSQL landing and DB checkpoints:
+
+```bash
+docker compose up -d
+python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-name sample-ingestion
 ```
 
 ## Project structure
@@ -108,7 +115,7 @@ Architectural Decision Records are stored in [`docs/adr/`](docs/adr/).
 pytest -v
 ```
 
-Coverage includes checkpoint persistence, duplicate suppression, and incremental cursor advancement.
+Coverage includes checkpoint persistence, duplicate suppression, incremental cursor advancement, PostgreSQL landing writes, and data-quality validation.
 
 ## Operations
 

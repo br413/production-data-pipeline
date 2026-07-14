@@ -4,46 +4,19 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
+import os
 from pathlib import Path
-from typing import Iterable
 
-
-@dataclass(frozen=True)
-class EventRecord:
-    """Normalized event from an external source."""
-
-    event_id: str
-    occurred_at: str
-    payload: dict
-
-
-@dataclass
-class Checkpoint:
-    """Tracks the last successfully processed cursor."""
-
-    cursor: str
-    processed_ids: set[str]
-
-    def to_dict(self) -> dict:
-        return {"cursor": self.cursor, "processed_ids": sorted(self.processed_ids)}
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "Checkpoint":
-        return cls(cursor=data.get("cursor", ""), processed_ids=set(data.get("processed_ids", [])))
-
-
-def load_checkpoint(path: Path) -> Checkpoint:
-    if not path.exists():
-        return Checkpoint(cursor="", processed_ids=set())
-    with path.open(encoding="utf-8") as handle:
-        return Checkpoint.from_dict(json.load(handle))
-
-
-def save_checkpoint(path: Path, checkpoint: Checkpoint) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        json.dump(checkpoint.to_dict(), handle, indent=2)
+from src.pipeline.models import Checkpoint, EventRecord
+from src.pipeline.quality.validators import assert_quality_suite
+from src.pipeline.storage.base import CheckpointStore, LandingStore
+from src.pipeline.storage.file_checkpoint import FileCheckpointStore
+from src.pipeline.storage.postgres import (
+    DEFAULT_DATABASE_URL,
+    PostgresCheckpointStore,
+    PostgresLandingStore,
+    init_schema,
+)
 
 
 def fetch_sample_events(cursor: str) -> tuple[list[EventRecord], str]:
@@ -63,12 +36,14 @@ def fetch_sample_events(cursor: str) -> tuple[list[EventRecord], str]:
 
 def ingest_incremental(
     fetch_page,
-    checkpoint_path: Path,
+    checkpoint_store: CheckpointStore,
     *,
+    landing_store: LandingStore | None = None,
     max_pages: int | None = None,
+    validate: bool = True,
 ) -> list[EventRecord]:
     """Load new records while preserving idempotency across runs."""
-    checkpoint = load_checkpoint(checkpoint_path)
+    checkpoint = checkpoint_store.load()
     ingested: list[EventRecord] = []
     cursor = checkpoint.cursor
     pages_read = 0
@@ -79,12 +54,20 @@ def ingest_incremental(
 
         records, next_cursor = fetch_page(cursor)
         pages_read += 1
+        page_batch: list[EventRecord] = []
 
         for record in records:
             if record.event_id in checkpoint.processed_ids:
                 continue
-            ingested.append(record)
-            checkpoint.processed_ids.add(record.event_id)
+            page_batch.append(record)
+
+        if page_batch:
+            if validate:
+                assert_quality_suite(page_batch)
+            if landing_store is not None:
+                landing_store.persist(page_batch)
+            ingested.extend(page_batch)
+            checkpoint.processed_ids.update(record.event_id for record in page_batch)
 
         if not next_cursor or next_cursor == cursor:
             checkpoint.cursor = cursor if records else next_cursor
@@ -93,20 +76,55 @@ def ingest_incremental(
         cursor = next_cursor
         checkpoint.cursor = cursor
 
-    save_checkpoint(checkpoint_path, checkpoint)
+    checkpoint_store.save(checkpoint)
     return ingested
+
+
+def build_stores(
+    *,
+    storage: str,
+    checkpoint: Path | None,
+    database_url: str,
+    pipeline_name: str,
+) -> tuple[CheckpointStore, LandingStore | None]:
+    if storage == "file":
+        if checkpoint is None:
+            raise ValueError("--checkpoint is required when --storage file")
+        return FileCheckpointStore(checkpoint), None
+
+    if storage == "postgres":
+        init_schema(database_url)
+        return (
+            PostgresCheckpointStore(database_url, pipeline_name),
+            PostgresLandingStore(database_url),
+        )
+
+    raise ValueError(f"Unsupported storage backend: {storage}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run sample incremental ingestion.")
     parser.add_argument("--source", default="sample", choices=["sample"])
-    parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--storage", default="file", choices=["file", "postgres"])
+    parser.add_argument("--checkpoint", type=Path, help="Checkpoint file for file storage")
+    parser.add_argument("--database-url", default=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
+    parser.add_argument("--pipeline-name", default="sample-ingestion")
     args = parser.parse_args()
 
     if args.source != "sample":
         raise SystemExit(f"Unsupported source: {args.source}")
 
-    records = ingest_incremental(fetch_sample_events, args.checkpoint)
+    checkpoint_store, landing_store = build_stores(
+        storage=args.storage,
+        checkpoint=args.checkpoint,
+        database_url=args.database_url,
+        pipeline_name=args.pipeline_name,
+    )
+    records = ingest_incremental(
+        fetch_sample_events,
+        checkpoint_store,
+        landing_store=landing_store,
+    )
     print(json.dumps([record.__dict__ for record in records], indent=2))
 
 
