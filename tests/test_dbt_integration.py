@@ -37,18 +37,37 @@ def _dbt_env(target: str = "ci") -> dict[str, str]:
     return env
 
 
+def _run_dbt_command(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        list(args),
+        env=_dbt_env("ci"),
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+    )
+
+
 def _list_relations(database_url: str) -> list[tuple[str, str, str]]:
     with psycopg.connect(database_url) as conn:
-        return conn.execute(
+        views = conn.execute(
             """
-            SELECT n.nspname, c.relname, c.relkind
-            FROM pg_class c
-            JOIN pg_namespace n ON n.oid = c.relnamespace
-            WHERE n.nspname IN ('silver', 'gold', 'bronze')
-              AND c.relkind IN ('r', 'v', 'm')
-            ORDER BY 1, 2
+            SELECT schemaname, viewname, 'v'
+            FROM pg_views
+            WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
             """
         ).fetchall()
+        tables = conn.execute(
+            """
+            SELECT schemaname, tablename, 'r'
+            FROM pg_tables
+            WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+            """
+        ).fetchall()
+    return list(views) + list(tables)
+
+
+def _relation_map(relations: list[tuple[str, str, str]]) -> dict[tuple[str, str], str]:
+    return {(schema, name): kind for schema, name, kind in relations}
 
 
 @pytest.mark.integration
@@ -64,82 +83,53 @@ def test_dbt_models_build_from_landed_events(database_url: str) -> None:
     )
     assert len(ingested) == 2
 
-    ls = subprocess.run(
-        [
-            "dbt",
-            "ls",
-            "--project-dir",
-            str(DBT_DIR),
-            "--profiles-dir",
-            str(DBT_DIR),
-            "--target",
-            "ci",
-        ],
-        env=_dbt_env("ci"),
-        cwd=str(PROJECT_ROOT),
-        capture_output=True,
-        text=True,
-    )
-    assert ls.returncode == 0, ls.stderr or ls.stdout
-    assert "stg_events" in ls.stdout, ls.stdout
-
-    clean = subprocess.run(
-        [
-            "dbt",
-            "clean",
-            "--project-dir",
-            str(DBT_DIR),
-            "--profiles-dir",
-            str(DBT_DIR),
-        ],
-        env=_dbt_env("ci"),
-        cwd=str(PROJECT_ROOT),
-        capture_output=True,
-        text=True,
+    clean = _run_dbt_command(
+        "dbt",
+        "clean",
+        "--project-dir",
+        str(DBT_DIR),
+        "--profiles-dir",
+        str(DBT_DIR),
     )
     assert clean.returncode == 0, clean.stderr or clean.stdout
 
-    run_result = subprocess.run(
-        [
-            "dbt",
-            "run",
-            "--full-refresh",
-            "--project-dir",
-            str(DBT_DIR),
-            "--profiles-dir",
-            str(DBT_DIR),
-            "--target",
-            "ci",
-        ],
-        env=_dbt_env("ci"),
-        cwd=str(PROJECT_ROOT),
-        capture_output=True,
-        text=True,
+    run_result = _run_dbt_command(
+        "dbt",
+        "run",
+        "--full-refresh",
+        "--project-dir",
+        str(DBT_DIR),
+        "--profiles-dir",
+        str(DBT_DIR),
+        "--target",
+        "ci",
     )
     assert run_result.returncode == 0, f"dbt run failed:\n{run_result.stdout}\n{run_result.stderr}"
+    assert "ERROR=0" in run_result.stdout, run_result.stdout
+    assert "NO-OP=0" in run_result.stdout, run_result.stdout
 
-    test_result = subprocess.run(
-        [
-            "dbt",
-            "test",
-            "--project-dir",
-            str(DBT_DIR),
-            "--profiles-dir",
-            str(DBT_DIR),
-            "--target",
-            "ci",
-        ],
-        env=_dbt_env("ci"),
-        cwd=str(PROJECT_ROOT),
-        capture_output=True,
-        text=True,
+    test_result = _run_dbt_command(
+        "dbt",
+        "test",
+        "--project-dir",
+        str(DBT_DIR),
+        "--profiles-dir",
+        str(DBT_DIR),
+        "--target",
+        "ci",
     )
     assert test_result.returncode == 0, f"dbt test failed:\n{test_result.stdout}\n{test_result.stderr}"
 
     relations = _list_relations(database_url)
-    relation_names = {(schema, name) for schema, name, _ in relations}
-    assert ("silver", "stg_events") in relation_names, f"relations: {relations}"
-    assert ("gold", "fct_daily_event_metrics") in relation_names, f"relations: {relations}"
+    relation_names = _relation_map(relations)
+    assert ("silver", "stg_events") in relation_names, (
+        f"relations: {relations}\n"
+        f"dbt run stdout:\n{run_result.stdout}"
+    )
+    assert ("gold", "fct_daily_event_metrics") in relation_names, (
+        f"relations: {relations}\n"
+        f"dbt run stdout:\n{run_result.stdout}"
+    )
 
     with psycopg.connect(database_url) as conn:
         silver_count = conn.execute("SELECT COUNT(*) FROM silver.stg_events").fetchone()[0]
