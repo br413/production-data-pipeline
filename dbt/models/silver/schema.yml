@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_events
+    description: Validated silver-layer staging view over bronze raw events.
+    columns:
+      - name: event_id
+        tests:
+          - unique
+          - not_null
+      - name: occurred_at
+        tests:
+          - not_null
+      - name: event_value
+        tests:
+          - not_null

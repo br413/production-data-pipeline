@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: fct_daily_event_metrics
+    description: Daily aggregated event metrics for analytics consumers.
+    columns:
+      - name: event_date
+        tests:
+          - unique
+          - not_null
+      - name: event_count
+        tests:
+          - not_null
+      - name: total_value
+        tests:
+          - not_null
