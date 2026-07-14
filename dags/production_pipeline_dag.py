@@ -22,10 +22,23 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://pipeline:pipeline@postgres:5432/landing",
 )
+WEBHOOK_URL = os.environ.get("PIPELINE_WEBHOOK_URL", "")
+
+# Import callback after PROJECT_ROOT is on path when Airflow loads DAGs.
+import sys
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from pipeline_callbacks import webhook_task_failure_callback  # noqa: E402
+
+default_args = dict(DEFAULT_ARGS)
+if WEBHOOK_URL:
+    default_args["on_failure_callback"] = webhook_task_failure_callback
 
 with DAG(
     dag_id="production_sample_ingestion",
-    default_args=DEFAULT_ARGS,
+    default_args=default_args,
     description="Ingest sample events, validate quality, and run dbt transforms",
     schedule="@daily",
     start_date=datetime(2026, 7, 1),
@@ -45,9 +58,11 @@ with DAG(
         bash_command=(
             f"cd {PROJECT_ROOT} && "
             "python -m src.pipeline.ingestion "
-            "--source sample --storage postgres --pipeline-name airflow-ingestion"
+            "--source sample --storage postgres --pipeline-name airflow-ingestion "
+            "--alert-on-zero-records"
+            + (f" --webhook-url {WEBHOOK_URL}" if WEBHOOK_URL else "")
         ),
-        env={"DATABASE_URL": DATABASE_URL},
+        env={"DATABASE_URL": DATABASE_URL, "PIPELINE_WEBHOOK_URL": WEBHOOK_URL},
     )
 
     run_dbt_models = BashOperator(

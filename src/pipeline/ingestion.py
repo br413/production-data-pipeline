@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 
+from src.pipeline.alerts import IngestionAlert, WebhookAlerter
 from src.pipeline.models import Checkpoint, EventRecord, IngestionResult, IngestionSummary
 from src.pipeline.quality.validators import assert_quality_suite
 from src.pipeline.storage.base import CheckpointStore, LandingStore
@@ -117,6 +118,16 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, help="Checkpoint file for file storage")
     parser.add_argument("--database-url", default=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
     parser.add_argument("--pipeline-name", default="sample-ingestion")
+    parser.add_argument(
+        "--webhook-url",
+        default=os.getenv("PIPELINE_WEBHOOK_URL"),
+        help="Optional webhook for zero-record ingestion alerts",
+    )
+    parser.add_argument(
+        "--alert-on-zero-records",
+        action="store_true",
+        help="POST to webhook when no new records are ingested",
+    )
     args = parser.parse_args()
 
     if args.source != "sample":
@@ -135,6 +146,16 @@ def main() -> None:
     )
     print(json.dumps([record.__dict__ for record in result.records], indent=2))
     print(json.dumps({"ingestion_summary": result.summary.__dict__}, indent=2))
+
+    if args.alert_on_zero_records and args.webhook_url and result.summary.records_ingested == 0:
+        WebhookAlerter(args.webhook_url).send(
+            IngestionAlert(
+                event_type="zero_record_ingestion",
+                pipeline_name=args.pipeline_name,
+                message="Ingestion completed with zero new records",
+                summary=result.summary.__dict__,
+            )
+        )
 
 
 if __name__ == "__main__":
