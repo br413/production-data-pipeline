@@ -8,11 +8,11 @@ Responsible for paginated reads from external APIs, cursor advancement, and idem
 
 ### Checkpoint store
 
-A lightweight JSON persistence layer records the last cursor and processed event IDs. Production deployments would migrate this to a transactional metadata store.
+PostgreSQL metadata tables (`meta.pipeline_checkpoints`, `meta.processed_event_ids`) record cursor position and processed event IDs. A file-based checkpoint remains available for lightweight local runs.
 
-### Landing layer (planned)
+### Landing layer
 
-PostgreSQL receives append-only raw events. Schema validation occurs before promotion to silver models.
+PostgreSQL `bronze.raw_events` receives append-only raw events with idempotent inserts on `event_id`. Data-quality checks run before persistence.
 
 ### Transformation layer (planned)
 
@@ -37,4 +37,5 @@ Airflow schedules ingestion, transformation, and quality gates with explicit ret
 docker compose up -d
 pytest
 python -m src.pipeline.ingestion --source sample --checkpoint .checkpoints/dev.json
+python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-name dev-ingestion
 ```
