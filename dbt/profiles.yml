@@ -8,7 +8,7 @@ production_data_pipeline:
       password: "{{ env_var('DBT_PASSWORD', 'pipeline') }}"
       port: "{{ env_var('DBT_PORT', '5432') | int }}"
       dbname: "{{ env_var('DBT_DBNAME', 'landing') }}"
-      schema: silver
+      schema: public
       threads: 2
     ci:
       type: postgres
@@ -17,5 +17,5 @@ production_data_pipeline:
       password: pipeline
       port: 5432
       dbname: landing
-      schema: silver
+      schema: public
       threads: 2

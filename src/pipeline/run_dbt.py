@@ -15,8 +15,16 @@ def run_dbt(command: str, *, target: str | None = None) -> None:
     if target:
         env["DBT_TARGET"] = target
 
+    args = [
+        "dbt",
+        command,
+        "--project-dir",
+        str(DBT_PROJECT_DIR),
+        "--profiles-dir",
+        str(DBT_PROJECT_DIR),
+    ]
     result = subprocess.run(
-        ["dbt", command, "--project-dir", str(DBT_PROJECT_DIR)],
+        args,
         env=env,
         check=False,
         capture_output=True,
@@ -24,7 +32,8 @@ def run_dbt(command: str, *, target: str | None = None) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"dbt {command} failed:\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            f"dbt {command} failed (exit {result.returncode}):\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
 
 
