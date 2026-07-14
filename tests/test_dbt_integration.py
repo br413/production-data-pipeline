@@ -75,13 +75,13 @@ def test_dbt_models_build_from_landed_events(database_url: str) -> None:
     checkpoint_store = PostgresCheckpointStore(database_url, "test-dbt-flow")
     landing_store = PostgresLandingStore(database_url)
 
-    ingested = ingest_incremental(
+    result = ingest_incremental(
         fetch_fixture,
         checkpoint_store,
         landing_store=landing_store,
         max_pages=1,
     )
-    assert len(ingested) == 2
+    assert len(result.records) == 2
 
     clean = _run_dbt_command(
         "dbt",

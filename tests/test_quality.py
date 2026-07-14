@@ -81,8 +81,8 @@ def test_postgres_landing_and_checkpoint_persistence(database_url: str) -> None:
         max_pages=2,
     )
 
-    assert [record.event_id for record in first_run] == ["pg-a", "pg-b", "pg-c"]
-    assert second_run == []
+    assert [record.event_id for record in first_run.records] == ["pg-a", "pg-b", "pg-c"]
+    assert second_run.records == ()
 
     landed = landing_store.fetch_all()
     assert [record.event_id for record in landed] == ["pg-a", "pg-b", "pg-c"]

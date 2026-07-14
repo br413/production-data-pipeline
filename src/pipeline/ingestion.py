@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-from src.pipeline.models import Checkpoint, EventRecord
+from src.pipeline.models import Checkpoint, EventRecord, IngestionResult, IngestionSummary
 from src.pipeline.quality.validators import assert_quality_suite
 from src.pipeline.storage.base import CheckpointStore, LandingStore
 from src.pipeline.storage.file_checkpoint import FileCheckpointStore
@@ -41,12 +41,13 @@ def ingest_incremental(
     landing_store: LandingStore | None = None,
     max_pages: int | None = None,
     validate: bool = True,
-) -> list[EventRecord]:
+) -> IngestionResult:
     """Load new records while preserving idempotency across runs."""
     checkpoint = checkpoint_store.load()
     ingested: list[EventRecord] = []
     cursor = checkpoint.cursor
     pages_read = 0
+    duplicates_skipped = 0
 
     while True:
         if max_pages is not None and pages_read >= max_pages:
@@ -58,6 +59,7 @@ def ingest_incremental(
 
         for record in records:
             if record.event_id in checkpoint.processed_ids:
+                duplicates_skipped += 1
                 continue
             page_batch.append(record)
 
@@ -77,7 +79,13 @@ def ingest_incremental(
         checkpoint.cursor = cursor
 
     checkpoint_store.save(checkpoint)
-    return ingested
+    summary = IngestionSummary(
+        pages_read=pages_read,
+        records_ingested=len(ingested),
+        duplicates_skipped=duplicates_skipped,
+        final_cursor=checkpoint.cursor,
+    )
+    return IngestionResult(records=tuple(ingested), summary=summary)
 
 
 def build_stores(
@@ -120,12 +128,13 @@ def main() -> None:
         database_url=args.database_url,
         pipeline_name=args.pipeline_name,
     )
-    records = ingest_incremental(
+    result = ingest_incremental(
         fetch_sample_events,
         checkpoint_store,
         landing_store=landing_store,
     )
-    print(json.dumps([record.__dict__ for record in records], indent=2))
+    print(json.dumps([record.__dict__ for record in result.records], indent=2))
+    print(json.dumps({"ingestion_summary": result.summary.__dict__}, indent=2))
 
 
 if __name__ == "__main__":

@@ -25,8 +25,12 @@ def test_incremental_ingestion_is_idempotent(tmp_path: Path) -> None:
     first_run = ingest_incremental(fetch_fixture, checkpoint_store, max_pages=2)
     second_run = ingest_incremental(fetch_fixture, checkpoint_store, max_pages=2)
 
-    assert [record.event_id for record in first_run] == ["a", "b", "c"]
-    assert second_run == []
+    assert [record.event_id for record in first_run.records] == ["a", "b", "c"]
+    assert first_run.summary.records_ingested == 3
+    assert first_run.summary.pages_read == 2
+    assert second_run.records == ()
+    assert second_run.summary.records_ingested == 0
+    assert second_run.summary.duplicates_skipped == 1
 
     saved = checkpoint_store.load()
     assert saved.processed_ids == {"a", "b", "c"}
@@ -35,8 +39,10 @@ def test_incremental_ingestion_is_idempotent(tmp_path: Path) -> None:
 def test_checkpoint_survives_partial_page(tmp_path: Path) -> None:
     checkpoint_store = FileCheckpointStore(tmp_path / "checkpoint.json")
 
-    ingest_incremental(fetch_fixture, checkpoint_store, max_pages=1)
+    result = ingest_incremental(fetch_fixture, checkpoint_store, max_pages=1)
     saved = checkpoint_store.load()
 
     assert saved.cursor == "p2"
     assert saved.processed_ids == {"a", "b"}
+    assert result.summary.records_ingested == 2
+    assert result.summary.final_cursor == "p2"

@@ -14,6 +14,7 @@
 ### What to watch
 
 - **Ingestion volume:** row count in `bronze.raw_events` per run
+- **Ingestion summary:** JSON block printed after each CLI run (`pages_read`, `records_ingested`, `duplicates_skipped`, `final_cursor`)
 - **Checkpoint freshness:** `meta.pipeline_checkpoints.updated_at`
 - **Transform health:** dbt test results in Airflow logs
 - **DAG SLA:** daily run completion before business hours
@@ -22,7 +23,7 @@
 
 | Environment | Location |
 |-------------|----------|
-| Local CLI | stdout from `python -m src.pipeline.ingestion` |
+| Local CLI | stdout from `python -m src.pipeline.ingestion` (records + `ingestion_summary`) |
 | Airflow | Task logs in Airflow UI → DAG → Task Instance |
 | CI | GitHub Actions job output |
 
