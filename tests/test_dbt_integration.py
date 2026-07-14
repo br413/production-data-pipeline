@@ -7,7 +7,6 @@ import pytest
 
 from src.pipeline.ingestion import ingest_incremental
 from src.pipeline.models import EventRecord
-from src.pipeline.run_dbt import run_transforms
 from src.pipeline.storage.postgres import PostgresCheckpointStore, PostgresLandingStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -66,15 +65,59 @@ def test_dbt_models_build_from_landed_events(database_url: str) -> None:
     assert len(ingested) == 2
 
     ls = subprocess.run(
-        ["dbt", "ls", "--project-dir", str(DBT_DIR), "--profiles-dir", str(DBT_DIR)],
+        [
+            "dbt",
+            "ls",
+            "--project-dir",
+            str(DBT_DIR),
+            "--profiles-dir",
+            str(DBT_DIR),
+            "--target",
+            "ci",
+        ],
         env=_dbt_env("ci"),
+        cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
     )
     assert ls.returncode == 0, ls.stderr or ls.stdout
     assert "stg_events" in ls.stdout, ls.stdout
 
-    run_transforms(target="ci")
+    run_result = subprocess.run(
+        [
+            "dbt",
+            "run",
+            "--project-dir",
+            str(DBT_DIR),
+            "--profiles-dir",
+            str(DBT_DIR),
+            "--target",
+            "ci",
+        ],
+        env=_dbt_env("ci"),
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert run_result.returncode == 0, f"dbt run failed:\n{run_result.stdout}\n{run_result.stderr}"
+
+    test_result = subprocess.run(
+        [
+            "dbt",
+            "test",
+            "--project-dir",
+            str(DBT_DIR),
+            "--profiles-dir",
+            str(DBT_DIR),
+            "--target",
+            "ci",
+        ],
+        env=_dbt_env("ci"),
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert test_result.returncode == 0, f"dbt test failed:\n{test_result.stdout}\n{test_result.stderr}"
 
     relations = _list_relations(database_url)
     relation_names = {(schema, name) for schema, name, _ in relations}

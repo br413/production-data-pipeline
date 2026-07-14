@@ -59,6 +59,12 @@ jobs:
       - name: Verify dbt project
         run: dbt ls --project-dir dbt --profiles-dir dbt --target ci
 
+      - name: Run dbt smoke test
+        run: |
+          python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-name ci-smoke
+          dbt run --project-dir dbt --profiles-dir dbt --target ci
+          dbt test --project-dir dbt --profiles-dir dbt --target ci
+
       - name: Run tests
         run: python -m pytest -q
         env:

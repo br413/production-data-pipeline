@@ -7,9 +7,10 @@ import subprocess
 from pathlib import Path
 
 DBT_PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
+PROJECT_ROOT = DBT_PROJECT_DIR.parent
 
 
-def run_dbt(command: str, *, target: str | None = None) -> None:
+def run_dbt(command: str, *, target: str | None = None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env.setdefault("DBT_PROFILES_DIR", str(DBT_PROJECT_DIR))
     if target:
@@ -23,9 +24,13 @@ def run_dbt(command: str, *, target: str | None = None) -> None:
         "--profiles-dir",
         str(DBT_PROJECT_DIR),
     ]
+    if target:
+        args.extend(["--target", target])
+
     result = subprocess.run(
         args,
         env=env,
+        cwd=str(PROJECT_ROOT),
         check=False,
         capture_output=True,
         text=True,
@@ -35,6 +40,7 @@ def run_dbt(command: str, *, target: str | None = None) -> None:
             f"dbt {command} failed (exit {result.returncode}):\n"
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
+    return result
 
 
 def run_transforms(*, target: str | None = None) -> None:
