@@ -20,3 +20,21 @@ class Checkpoint:
 
     cursor: str
     processed_ids: set[str]
+
+
+@dataclass(frozen=True)
+class IngestionSummary:
+    """Structured run metrics for logging and monitoring."""
+
+    pages_read: int
+    records_ingested: int
+    duplicates_skipped: int
+    final_cursor: str
+
+
+@dataclass(frozen=True)
+class IngestionResult:
+    """Records loaded in a run plus observability metadata."""
+
+    records: tuple[EventRecord, ...]
+    summary: IngestionSummary
