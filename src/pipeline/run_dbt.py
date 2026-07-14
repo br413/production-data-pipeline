@@ -26,6 +26,8 @@ def run_dbt(command: str, *, target: str | None = None) -> subprocess.CompletedP
     ]
     if target:
         args.extend(["--target", target])
+    if command == "run":
+        args.append("--full-refresh")
 
     result = subprocess.run(
         args,
@@ -44,6 +46,7 @@ def run_dbt(command: str, *, target: str | None = None) -> subprocess.CompletedP
 
 
 def run_transforms(*, target: str | None = None) -> None:
+    run_dbt("clean", target=target)
     run_dbt("run", target=target)
     run_dbt("test", target=target)
 

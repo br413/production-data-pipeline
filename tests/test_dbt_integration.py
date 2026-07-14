@@ -83,10 +83,27 @@ def test_dbt_models_build_from_landed_events(database_url: str) -> None:
     assert ls.returncode == 0, ls.stderr or ls.stdout
     assert "stg_events" in ls.stdout, ls.stdout
 
+    clean = subprocess.run(
+        [
+            "dbt",
+            "clean",
+            "--project-dir",
+            str(DBT_DIR),
+            "--profiles-dir",
+            str(DBT_DIR),
+        ],
+        env=_dbt_env("ci"),
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert clean.returncode == 0, clean.stderr or clean.stdout
+
     run_result = subprocess.run(
         [
             "dbt",
             "run",
+            "--full-refresh",
             "--project-dir",
             str(DBT_DIR),
             "--profiles-dir",
