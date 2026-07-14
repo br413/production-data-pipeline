@@ -15,9 +15,9 @@ Ingestion connector (incremental, idempotent)
     ↓
 Raw / bronze layer (PostgreSQL landing)
     ↓
-Validated / silver layer (dbt models — planned)
+Validated / silver layer (dbt `stg_events`)
     ↓
-Curated / gold layer (analytics-ready — planned)
+Curated / gold layer (`fct_daily_event_metrics`)
     ↓
 Downstream consumers
 ```
@@ -30,11 +30,12 @@ See [`docs/architecture.md`](docs/architecture.md) for component boundaries and 
 - [x] Idempotent record handling via stable event IDs
 - [x] PostgreSQL bronze landing layer with Docker Compose
 - [x] Data-quality checks: schema, required fields, uniqueness, freshness
+- [x] dbt silver (`stg_events`) and gold (`fct_daily_event_metrics`) models
+- [x] Airflow DAG `production_sample_ingestion` with retries
+- [x] Operations runbook and demo script
 - [x] Unit and integration tests with CI PostgreSQL service
 - [x] CI workflow on push and pull request
-- [ ] dbt transformation models
-- [ ] Airflow orchestration DAG
-- [ ] Monitoring and retry runbook
+- [ ] Production Airflow deployment (local `airflow dags test` supported)
 
 ## Technology
 
@@ -42,8 +43,8 @@ See [`docs/architecture.md`](docs/architecture.md) for component boundaries and 
 |------|-----------|
 | Language | Python 3.12 |
 | Storage | PostgreSQL bronze + metadata, optional JSON checkpoints |
-| Orchestration | Airflow (planned) |
-| Transformation | dbt (planned) |
+| Orchestration | Airflow (`production_sample_ingestion`) |
+| Transformation | dbt (silver + gold) |
 | Testing | pytest |
 | Deployment | Docker Compose (local), CI via GitHub Actions |
 
@@ -82,6 +83,13 @@ Run with PostgreSQL landing and DB checkpoints:
 ```bash
 docker compose up -d
 python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-name sample-ingestion
+python -m src.pipeline.run_dbt --target dev
+```
+
+Run the full demo script (Windows):
+
+```powershell
+.\scripts\run_demo.ps1
 ```
 
 ## Project structure
@@ -92,9 +100,18 @@ python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-n
 │   ├── ISSUE_TEMPLATE/
 │   ├── workflows/ci.yml
 │   └── pull_request_template.md
+├── dags/
+│   └── production_pipeline_dag.py
+├── dbt/
+│   ├── models/
+│   └── profiles.yml
 ├── docs/
 │   ├── architecture.md
+│   ├── demo.md
+│   ├── operations.md
 │   └── adr/
+├── scripts/
+│   └── run_demo.ps1
 ├── src/
 │   └── pipeline/
 ├── tests/
@@ -115,18 +132,19 @@ Architectural Decision Records are stored in [`docs/adr/`](docs/adr/).
 pytest -v
 ```
 
-Coverage includes checkpoint persistence, duplicate suppression, incremental cursor advancement, PostgreSQL landing writes, and data-quality validation.
+Coverage includes checkpoint persistence, duplicate suppression, incremental cursor advancement, PostgreSQL landing writes, data-quality validation, dbt transforms, and Airflow DAG integrity.
 
 ## Operations
 
 | Concern | Approach |
 |---------|----------|
-| Scheduling | Airflow DAG (planned) |
-| Monitoring | Structured logs; metrics hooks planned |
-| Retries | Exponential backoff wrapper (planned) |
+| Scheduling | Airflow DAG `@daily` with 2 retries |
+| Monitoring | See [`docs/operations.md`](docs/operations.md) |
+| Retries | Airflow 5-minute backoff; manual rerun documented |
 | Backfills | Checkpoint reset with documented procedure |
 | Recovery | Checkpoint replay from last successful cursor |
 | Secrets | Environment variables; never committed |
+| Demo | [`docs/demo.md`](docs/demo.md) walkthrough script |
 
 ## Roadmap
 

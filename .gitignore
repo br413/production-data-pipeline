@@ -1,11 +1,21 @@
-# Checkpoints
-.checkpoints/
-
 # Python
 __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
 
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+
+# Airflow
+.airflow/
+logs/
+
 # Environment
 .env
+
+# Checkpoints
+.checkpoints/

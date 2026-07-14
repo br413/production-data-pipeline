@@ -28,6 +28,12 @@ def clean_tables(request) -> None:
 
     url = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
     with psycopg.connect(url, autocommit=True) as conn:
+        conn.execute("DROP VIEW IF EXISTS silver.stg_events CASCADE")
+        conn.execute("DROP TABLE IF EXISTS gold.fct_daily_event_metrics CASCADE")
+        conn.execute("DROP SCHEMA IF EXISTS silver CASCADE")
+        conn.execute("DROP SCHEMA IF EXISTS gold CASCADE")
+        conn.execute("CREATE SCHEMA IF NOT EXISTS silver")
+        conn.execute("CREATE SCHEMA IF NOT EXISTS gold")
         conn.execute("TRUNCATE bronze.raw_events")
         conn.execute(
             "DELETE FROM meta.processed_event_ids WHERE pipeline_name LIKE 'test-%'"
