@@ -130,8 +130,27 @@ python -m src.pipeline.run_dbt --target dev
 | `DBT_TARGET` | dbt profile target (`dev`, `ci`) |
 | `DBT_HOST` | Database host for dbt |
 | `PIPELINE_PROJECT_ROOT` | Repo root for Airflow BashOperators |
+| `PIPELINE_WEBHOOK_URL` | Optional webhook for zero-record and task-failure alerts |
 
 Never commit credentials. Use environment variables or a secrets manager in production.
+
+### Webhook alerts
+
+When `PIPELINE_WEBHOOK_URL` is set:
+
+- **Zero-record runs:** ingestion posts `zero_record_ingestion` when `--alert-on-zero-records` is enabled and no new rows land
+- **Airflow failures:** `on_failure_callback` posts `airflow_task_failure` after retries are exhausted
+
+Manual notification:
+
+```bash
+python -m src.pipeline.notify \
+  --webhook-url "$PIPELINE_WEBHOOK_URL" \
+  --event-type airflow_task_failure \
+  --message "ingest task failed" \
+  --dag-id production_sample_ingestion \
+  --task-id ingest_sample_events
+```
 
 ## Escalation
 
