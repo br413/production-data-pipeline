@@ -148,18 +148,11 @@ Coverage includes checkpoint persistence, duplicate suppression, incremental cur
 
 ## Roadmap
 
-Tracked via GitHub Issues and milestones:
+Tracked via GitHub Issues and milestones. Week 4 career materials:
 
-1. Repository foundation
-2. Ingestion connector
-3. Idempotency and checkpoints
-4. Transformation models
-5. Data-quality rules
-6. Orchestration
-7. CI/CD hardening
-8. Monitoring and retry strategy
-9. Documentation
-10. Versioned release
+- [`docs/career/resume-snippets.md`](docs/career/resume-snippets.md)
+- [`docs/career/linkedin-setup.md`](docs/career/linkedin-setup.md)
+- [`docs/career/outreach-tracker.md`](docs/career/outreach-tracker.md)
 
 ## Attribution
 
