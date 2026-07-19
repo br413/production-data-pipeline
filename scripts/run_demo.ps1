@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot ..
+Set-Location (Join-Path $PSScriptRoot '..')
 
 Write-Host "Starting PostgreSQL..."
 docker compose up -d
