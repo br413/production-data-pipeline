@@ -11,11 +11,15 @@
 
 A production-style **data engineering** portfolio project demonstrating incremental API ingestion, idempotent loads, medallion-style layering (bronze → silver → gold), and operational monitoring — patterns used in modern **ETL/ELT pipelines** on cloud data platforms.
 
-## Why this project exists
+## Problem
 
-Operational analytics depends on pipelines that survive API rate limits, partial failures, and schema drift without silent data loss. This repository demonstrates a production-style ingestion pattern: idempotent loads, explicit checkpoints, and separable transformation layers that can be tested independently.
+Operational analytics breaks when pipelines **silently drop records**, re-process duplicates, or push schema drift into dashboards. Teams need a reference pattern that shows:
 
-**Ideal for:** data engineers evaluating incremental loading patterns, teams prototyping bronze/silver/gold architectures, and hiring managers reviewing pipeline design skills.
+- How to resume ingestion after interruption without skipping pages or double-counting events
+- How to separate raw landing, validated staging, and curated aggregates so each layer is testable
+- How to fail loudly when quality regresses — not after bad data reaches executives
+
+This repository is a **production-style reference implementation** for those patterns, not a tutorial CSV load.
 
 ## Architecture
 
@@ -34,6 +38,51 @@ Downstream consumers
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for component boundaries and failure modes.
+
+## Key decisions
+
+| Decision | Alternatives considered | Why this choice |
+|----------|-------------------------|-----------------|
+| Cursor + processed-ID checkpoints | Timestamp-only watermarks | APIs can return out-of-order events; stable IDs give safer idempotency |
+| PostgreSQL bronze + metadata tables | JSON checkpoints only, SQLite | Matches warehouse/lakehouse landing patterns; DB constraints enforce idempotency |
+| dbt for silver/gold transforms | Pure Python transforms | Declarative models, built-in tests, and clearer analytics ownership boundaries |
+| Airflow orchestration | Cron, Prefect-only | Widely adopted scheduling model; demonstrates retry/backoff and task dependencies |
+| Quality gates before bronze landing | Validate only in dbt | Blocks bad records at the ingestion boundary; reduces polluted raw history |
+| File checkpoints for local dev | Require Postgres everywhere | Lowers onboarding friction while keeping a production upgrade path |
+
+Full rationale: [`docs/adr/`](docs/adr/).
+
+## Failure modes
+
+| Failure | Mitigation |
+|---------|------------|
+| Duplicate delivery | `processed_ids` set + `ON CONFLICT DO NOTHING` on `event_id` |
+| Partial page read | Checkpoint advances only after successful page processing |
+| API timeout | Airflow retry (2×, 5-min backoff); manual rerun in [`docs/operations.md`](docs/operations.md) |
+| Schema drift | Python quality gate blocks landing; dbt tests catch transform issues |
+| dbt test failure | DAG stops before downstream consumers see broken data |
+| Zero-record “success” | Ingestion metrics + webhook alerts for empty runs |
+
+## Trade-offs
+
+| Area | Choice | Cost accepted |
+|------|--------|---------------|
+| Checkpoint store | PostgreSQL metadata tables | Requires Docker/local Postgres for integration tests |
+| Processed-ID tracking | In-database set per pipeline | Will need pruning/archival at high event volume |
+| Landing layer | PostgreSQL bronze | Not object-storage lakehouse scale — intentional scope for clarity |
+| Orchestration | Local `airflow dags test` | Production Airflow deployment not included yet |
+
+## Results
+
+Reference implementation metrics (synthetic sample source, CI-validated):
+
+| Signal | Outcome |
+|--------|---------|
+| Idempotent re-runs | Duplicate events suppressed via processed-ID set and DB constraint |
+| Recovery | Checkpoint replay from last successful cursor after process restart |
+| Test coverage | pytest across ingestion, quality gates, dbt transforms, and DAG integrity |
+| CI | GitHub Actions with PostgreSQL service container on every push and PR |
+| Operational docs | Architecture, ADRs, operations runbook, and demo script included |
 
 ## Current capabilities
 
@@ -164,7 +213,8 @@ Coverage includes checkpoint persistence, duplicate suppression, incremental cur
 |---------|-------|
 | [**data-quality-observability**](https://github.com/br413/data-quality-observability) | Contract-driven data quality checks with history and alert routing |
 | [**cloud-lakehouse-blueprint**](https://github.com/br413/cloud-lakehouse-blueprint) | Medallion lakehouse architecture with Terraform IaC |
-| [**@br413**](https://github.com/br413) | Senior Data Engineer & Data Architect portfolio |
+| [**Portfolio & writing**](https://br413.github.io/) | Senior DE portfolio and technical articles |
+| [**@br413**](https://github.com/br413) | Senior Data Engineer & Data Architect profile |
 
 ## Roadmap
 
