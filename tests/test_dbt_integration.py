@@ -71,7 +71,10 @@ def _relation_map(relations: list[tuple[str, str, str]]) -> dict[tuple[str, str]
 
 
 @pytest.mark.integration
-def test_dbt_models_build_from_landed_events(database_url: str) -> None:
+def test_dbt_models_build_from_landed_events(
+    database_url: str,
+    quality_reference_time,
+) -> None:
     checkpoint_store = PostgresCheckpointStore(database_url, "test-dbt-flow")
     landing_store = PostgresLandingStore(database_url)
 
@@ -80,6 +83,7 @@ def test_dbt_models_build_from_landed_events(database_url: str) -> None:
         checkpoint_store,
         landing_store=landing_store,
         max_pages=1,
+        quality_now=quality_reference_time,
     )
     assert len(result.records) == 2
 
