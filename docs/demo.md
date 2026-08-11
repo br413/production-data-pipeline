@@ -76,7 +76,7 @@ Open `docs/operations.md`.
 
 ## Closing line
 
-> This is v0.1.0 — a focused, inspectable portfolio project showing how I design reliable data platforms with testing, documentation, and clear recovery paths.
+> This is v0.2.0 — a focused, inspectable portfolio project showing how I design reliable data platforms with testing, documentation, and clear recovery paths.
 
 ## Optional: Airflow UI
 

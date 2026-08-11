@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.0] - 2026-08-11
+
+### Added
+
+- Structured `IngestionSummary` metrics (`pages_read`, `records_ingested`, `duplicates_skipped`, `final_cursor`) printed after each ingestion run
+- Webhook alerts for zero-record ingestion runs and Airflow task failures (`PIPELINE_WEBHOOK_URL`, `python -m src.pipeline.notify`)
+- Local validation script `scripts/check.ps1` for pytest, dbt, and DAG import checks
+- Mermaid architecture diagram in README showing bronze → silver → gold flow
+
+### Changed
+
+- README reframed around problem, decisions, trade-offs, and operational outcomes
+- PowerShell demo/check scripts now resolve repo root reliably on Windows
+
 ## [0.1.0] - 2026-07-14
 
 ### Added
@@ -20,4 +34,5 @@ All notable changes to this project are documented in this file.
 - Refactored ingestion to use pluggable storage adapters
 - Extended schema with `silver` and `gold` layers
 
+[0.2.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.2.0
 [0.1.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.1.0
