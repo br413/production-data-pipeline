@@ -7,6 +7,7 @@
 | Ingestion | `src.pipeline.ingestion` | Task failure, zero new rows unexpectedly |
 | Quality | `src.pipeline.quality.validators` | Validation error before landing |
 | Transform | dbt silver/gold models | `dbt test` failure |
+| Quarantine (planned) | `bronze.quarantine_events` | `records_quarantined` > 0 in ingestion summary |
 | Orchestration | Airflow DAG `production_sample_ingestion` | DAG run failed / retry exhausted |
 
 ## Monitoring
@@ -33,6 +34,7 @@
 2. `dbt test` failure on `stg_events` or `fct_daily_event_metrics`
 3. No checkpoint update within 24 hours for scheduled pipeline
 4. Ingestion returns zero records for 3 consecutive runs (possible upstream outage)
+5. Quarantine volume spikes (planned — see [ADR 0004](adr/0004-failed-record-quarantine.md))
 
 ## Retry policy
 
@@ -151,6 +153,25 @@ python -m src.pipeline.notify \
   --dag-id production_sample_ingestion \
   --task-id ingest_sample_events
 ```
+
+## Failed-record quarantine (planned)
+
+Design: [ADR 0004 — failed-record quarantine](adr/0004-failed-record-quarantine.md).
+
+When implemented, invalid rows will land in `bronze.quarantine_events` instead of aborting the entire ingestion page. Until Phase 2 ships, validation failures still fail the task — treat as **High** severity if recurring.
+
+**Planned recovery steps:**
+
+1. Query quarantine rows for the pipeline run:
+   ```sql
+   SELECT event_id, failed_rule, failure_message, quarantined_at
+   FROM bronze.quarantine_events
+   WHERE pipeline_name = 'airflow-ingestion'
+   ORDER BY quarantined_at DESC;
+   ```
+2. Fix upstream payload, contract rule, or required-field mapping.
+3. Replay: insert corrected row into `bronze.raw_events` or delete quarantine row and re-run ingestion (idempotent `event_id` handling prevents duplicates).
+4. Confirm silver/gold models exclude quarantined IDs via dbt source filters.
 
 ## Escalation
 
