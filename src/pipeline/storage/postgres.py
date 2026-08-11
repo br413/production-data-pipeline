@@ -62,6 +62,62 @@ class PostgresLandingStore:
         ]
 
 
+class PostgresQuarantineStore:
+    def __init__(
+        self,
+        database_url: str = DEFAULT_DATABASE_URL,
+    ) -> None:
+        self._database_url = database_url
+
+    def persist(
+        self,
+        record: EventRecord,
+        *,
+        failed_rule: str,
+        failure_message: str,
+        pipeline_name: str,
+        run_id: str,
+    ) -> None:
+        with psycopg.connect(self._database_url) as conn:
+            conn.execute(
+                """
+                INSERT INTO bronze.quarantine_events (
+                    event_id,
+                    occurred_at,
+                    payload,
+                    failed_rule,
+                    failure_message,
+                    pipeline_name,
+                    run_id
+                )
+                VALUES (%s, %s, %s::jsonb, %s, %s, %s, %s)
+                ON CONFLICT (pipeline_name, event_id, run_id) DO NOTHING
+                """,
+                (
+                    record.event_id,
+                    record.occurred_at,
+                    json.dumps(record.payload),
+                    failed_rule,
+                    failure_message,
+                    pipeline_name,
+                    run_id,
+                ),
+            )
+            conn.commit()
+
+    def count_for_pipeline(self, pipeline_name: str) -> int:
+        with psycopg.connect(self._database_url) as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM bronze.quarantine_events
+                WHERE pipeline_name = %s
+                """,
+                (pipeline_name,),
+            ).fetchone()
+        return int(row[0]) if row else 0
+
+
 class PostgresCheckpointStore:
     def __init__(
         self,

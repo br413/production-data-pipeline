@@ -15,3 +15,15 @@ class CheckpointStore(Protocol):
 
 class LandingStore(Protocol):
     def persist(self, records: list[EventRecord]) -> int: ...
+
+
+class QuarantineStore(Protocol):
+    def persist(
+        self,
+        record: EventRecord,
+        *,
+        failed_rule: str,
+        failure_message: str,
+        pipeline_name: str,
+        run_id: str,
+    ) -> None: ...

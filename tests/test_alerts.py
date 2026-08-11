@@ -25,6 +25,24 @@ def test_webhook_alerter_posts_json_payload() -> None:
     assert b"zero_record_ingestion" in request_obj.data
 
 
+def test_webhook_alerter_quarantine_event_type() -> None:
+    alert = IngestionAlert(
+        event_type="ingestion_quarantine",
+        pipeline_name="sample-ingestion",
+        message="Ingestion quarantined 1 record(s) after validation failures",
+        summary={"records_quarantined": 1},
+    )
+    alerter = WebhookAlerter("https://example.test/hook")
+
+    with patch("src.pipeline.alerts.request.urlopen") as urlopen:
+        urlopen.return_value.__enter__ = MagicMock(return_value=MagicMock())
+        urlopen.return_value.__exit__ = MagicMock(return_value=False)
+        alerter.send(alert)
+
+    request_obj = urlopen.call_args.args[0]
+    assert b"ingestion_quarantine" in request_obj.data
+
+
 def test_webhook_alerter_raises_on_delivery_failure() -> None:
     alerter = WebhookAlerter("https://example.test/hook")
     alert = IngestionAlert(

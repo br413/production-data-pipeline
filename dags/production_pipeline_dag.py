@@ -59,7 +59,7 @@ with DAG(
             f"cd {PROJECT_ROOT} && "
             "python -m src.pipeline.ingestion "
             "--source sample --storage postgres --pipeline-name airflow-ingestion "
-            "--alert-on-zero-records"
+            "--enable-quarantine --alert-on-zero-records --alert-on-quarantine"
             + (f" --webhook-url {WEBHOOK_URL}" if WEBHOOK_URL else "")
         ),
         env={"DATABASE_URL": DATABASE_URL, "PIPELINE_WEBHOOK_URL": WEBHOOK_URL},

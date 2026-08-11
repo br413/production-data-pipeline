@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 import pytest
 
@@ -19,6 +20,12 @@ def database_url() -> str:
     return url
 
 
+@pytest.fixture
+def quality_reference_time() -> datetime:
+    """Fixed clock for freshness checks in tests using July 2026 fixture dates."""
+    return datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc)
+
+
 @pytest.fixture(autouse=True)
 def clean_tables(request) -> None:
     if request.node.get_closest_marker("integration") is None:
@@ -35,6 +42,7 @@ def clean_tables(request) -> None:
         conn.execute("CREATE SCHEMA IF NOT EXISTS silver")
         conn.execute("CREATE SCHEMA IF NOT EXISTS gold")
         conn.execute("TRUNCATE bronze.raw_events")
+        conn.execute("TRUNCATE bronze.quarantine_events")
         conn.execute(
             "DELETE FROM meta.processed_event_ids WHERE pipeline_name LIKE 'test-%'"
         )
