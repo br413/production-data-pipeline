@@ -1,6 +1,6 @@
 # Demo Script (2–3 minutes)
 
-Use this script to record a short walkthrough of the pipeline for your portfolio or LinkedIn.
+Use this script to record a short walkthrough of the pipeline for your portfolio site or Dev.to article.
 
 ## Setup before recording
 
