@@ -240,7 +240,6 @@ Coverage includes checkpoint persistence, duplicate suppression, incremental cur
 Tracked via GitHub Issues and milestones. Week 4 career materials:
 
 - [`docs/career/resume-snippets.md`](docs/career/resume-snippets.md)
-- [`docs/career/linkedin-setup.md`](docs/career/linkedin-setup.md)
 - [`docs/career/outreach-tracker.md`](docs/career/outreach-tracker.md)
 
 ## Topics
