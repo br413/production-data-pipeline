@@ -23,19 +23,38 @@ This repository is a **production-style reference implementation** for those pat
 
 ## Architecture
 
-```text
-External API
-    ↓
-Ingestion connector (incremental, idempotent)
-    ↓
-Raw / bronze layer (PostgreSQL landing)
-    ↓
-Validated / silver layer (dbt `stg_events`)
-    ↓
-Curated / gold layer (`fct_daily_event_metrics`)
-    ↓
-Downstream consumers
+```mermaid
+flowchart LR
+    subgraph source["External API"]
+        API["Paginated REST API"]
+    end
+
+    subgraph airflow["Apache Airflow · production_sample_ingestion"]
+        INGEST["ingest_sample_events"]
+        DBT["run_dbt_models"]
+        INGEST --> DBT
+    end
+
+    subgraph landing["PostgreSQL landing"]
+        BRONZE[("bronze.raw_events")]
+        META[("meta.checkpoints<br/>meta.processed_event_ids")]
+    end
+
+    subgraph transforms["dbt medallion"]
+        SILVER["silver.stg_events"]
+        GOLD["gold.fct_daily_event_metrics"]
+        SILVER --> GOLD
+    end
+
+    API -->|"incremental pages + quality gate"| INGEST
+    INGEST --> BRONZE
+    INGEST --> META
+    DBT --> SILVER
+    BRONZE --> SILVER
+    GOLD --> CONSUMERS["Downstream analytics"]
 ```
+
+**Flow:** paginated API reads with cursor + processed-ID checkpoints → quality-validated bronze landing → dbt silver/gold models with tests → daily aggregates for consumers.
 
 See [`docs/architecture.md`](docs/architecture.md) for component boundaries and failure modes.
 
