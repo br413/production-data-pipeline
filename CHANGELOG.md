@@ -2,13 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.2.1] - 2026-08-11
 
 ### Added
 
 - Failed-record quarantine: `bronze.quarantine_events`, per-record validation routing, `records_quarantined` metric
 - `--enable-quarantine` and `--alert-on-quarantine` CLI flags; webhook event type `ingestion_quarantine`
 - dbt `stg_events` excludes quarantined event IDs
+- ADR 0004: failed-record quarantine design and implementation
 
 ## [0.2.0] - 2026-08-11
 
@@ -42,5 +43,6 @@ All notable changes to this project are documented in this file.
 - Refactored ingestion to use pluggable storage adapters
 - Extended schema with `silver` and `gold` layers
 
+[0.2.1]: https://github.com/br413/production-data-pipeline/releases/tag/v0.2.1
 [0.2.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.2.0
 [0.1.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.1.0
