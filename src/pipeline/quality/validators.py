@@ -79,20 +79,38 @@ def validate_freshness(
     return QualityResult("freshness", True, "events are within freshness window")
 
 
-def run_quality_suite(records: list[EventRecord]) -> list[QualityResult]:
+def record_quality_failures(
+    record: EventRecord,
+    *,
+    now: datetime | None = None,
+) -> list[QualityResult]:
+    """Return failed quality checks for a single record."""
+    results = [
+        validate_event_schema(record),
+        validate_required_payload_fields([record]),
+        validate_freshness([record], now=now),
+    ]
+    return [result for result in results if not result.passed]
+
+
+def run_quality_suite(
+    records: list[EventRecord],
+    *,
+    now: datetime | None = None,
+) -> list[QualityResult]:
     results = [validate_event_schema(record) for record in records]
     results.extend(
         [
             validate_required_payload_fields(records),
             validate_unique_event_ids(records),
-            validate_freshness(records),
+            validate_freshness(records, now=now),
         ]
     )
     return results
 
 
-def assert_quality_suite(records: list[EventRecord]) -> None:
-    failures = [result for result in run_quality_suite(records) if not result.passed]
+def assert_quality_suite(records: list[EventRecord], *, now: datetime | None = None) -> None:
+    failures = [result for result in run_quality_suite(records, now=now) if not result.passed]
     if failures:
         messages = "; ".join(f"{result.rule}: {result.message}" for result in failures)
         raise ValueError(messages)

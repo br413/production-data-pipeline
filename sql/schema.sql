@@ -25,3 +25,18 @@ CREATE TABLE IF NOT EXISTS meta.processed_event_ids (
 
 CREATE INDEX IF NOT EXISTS idx_raw_events_occurred_at
     ON bronze.raw_events (occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS bronze.quarantine_events (
+    event_id TEXT NOT NULL,
+    occurred_at TIMESTAMPTZ,
+    payload JSONB NOT NULL,
+    failed_rule TEXT NOT NULL,
+    failure_message TEXT NOT NULL,
+    pipeline_name TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    quarantined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (pipeline_name, event_id, run_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quarantine_events_pipeline
+    ON bronze.quarantine_events (pipeline_name, quarantined_at DESC);

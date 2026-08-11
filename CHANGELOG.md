@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Failed-record quarantine: `bronze.quarantine_events`, per-record validation routing, `records_quarantined` metric
+- `--enable-quarantine` and `--alert-on-quarantine` CLI flags; webhook event type `ingestion_quarantine`
+- dbt `stg_events` excludes quarantined event IDs
+
 ## [0.2.0] - 2026-08-11
 
 ### Added

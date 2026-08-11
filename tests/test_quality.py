@@ -39,14 +39,14 @@ def test_freshness_detects_stale_events() -> None:
     assert result.passed is False
 
 
-def test_quality_suite_passes_for_valid_records() -> None:
+def test_quality_suite_passes_for_valid_records(quality_reference_time) -> None:
     records = [
         EventRecord("evt-1", "2026-07-01T10:00:00Z", {"value": 1}),
         EventRecord("evt-2", "2026-07-01T10:05:00Z", {"value": 2}),
     ]
     results = run_quality_suite(records)
-    assert all(result.passed for result in results)
-    assert_quality_suite(records)
+    assert all(result.passed for result in results if result.rule != "freshness")
+    assert validate_freshness(records, now=quality_reference_time).passed
 
 
 def fetch_fixture(cursor: str):
@@ -64,7 +64,10 @@ def fetch_fixture(cursor: str):
 
 
 @pytest.mark.integration
-def test_postgres_landing_and_checkpoint_persistence(database_url: str) -> None:
+def test_postgres_landing_and_checkpoint_persistence(
+    database_url: str,
+    quality_reference_time,
+) -> None:
     checkpoint_store = PostgresCheckpointStore(database_url, "test-postgres-flow")
     landing_store = PostgresLandingStore(database_url)
 
@@ -73,12 +76,14 @@ def test_postgres_landing_and_checkpoint_persistence(database_url: str) -> None:
         checkpoint_store,
         landing_store=landing_store,
         max_pages=2,
+        quality_now=quality_reference_time,
     )
     second_run = ingest_incremental(
         fetch_fixture,
         checkpoint_store,
         landing_store=landing_store,
         max_pages=2,
+        quality_now=quality_reference_time,
     )
 
     assert [record.event_id for record in first_run.records] == ["pg-a", "pg-b", "pg-c"]

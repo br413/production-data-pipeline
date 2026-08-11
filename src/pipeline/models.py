@@ -30,6 +30,7 @@ class IngestionSummary:
     records_ingested: int
     duplicates_skipped: int
     final_cursor: str
+    records_quarantined: int = 0
 
 
 @dataclass(frozen=True)

@@ -16,3 +16,4 @@ sources:
           - name: payload
             tests:
               - not_null
+      - name: quarantine_events

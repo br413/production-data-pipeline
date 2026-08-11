@@ -115,7 +115,7 @@ Reference implementation metrics (synthetic sample source, CI-validated):
 - [x] Operations runbook and demo script
 - [x] Unit and integration tests with CI PostgreSQL service
 - [x] CI workflow on push and pull request
-- [ ] Failed-record quarantine / dead-letter path ([ADR 0004](docs/adr/0004-failed-record-quarantine.md) — design)
+- [x] Failed-record quarantine / dead-letter path ([ADR 0004](docs/adr/0004-failed-record-quarantine.md))
 - [ ] Production Airflow deployment (local `airflow dags test` supported)
 
 ## Technology stack

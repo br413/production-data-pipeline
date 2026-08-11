@@ -7,7 +7,7 @@
 | Ingestion | `src.pipeline.ingestion` | Task failure, zero new rows unexpectedly |
 | Quality | `src.pipeline.quality.validators` | Validation error before landing |
 | Transform | dbt silver/gold models | `dbt test` failure |
-| Quarantine (planned) | `bronze.quarantine_events` | `records_quarantined` > 0 in ingestion summary |
+| Quarantine | `bronze.quarantine_events` | `records_quarantined` > 0 in ingestion summary |
 | Orchestration | Airflow DAG `production_sample_ingestion` | DAG run failed / retry exhausted |
 
 ## Monitoring
@@ -15,7 +15,7 @@
 ### What to watch
 
 - **Ingestion volume:** row count in `bronze.raw_events` per run
-- **Ingestion summary:** JSON block printed after each CLI run (`pages_read`, `records_ingested`, `duplicates_skipped`, `final_cursor`)
+- **Ingestion summary:** JSON block printed after each CLI run (`pages_read`, `records_ingested`, `duplicates_skipped`, `records_quarantined`, `final_cursor`)
 - **Checkpoint freshness:** `meta.pipeline_checkpoints.updated_at`
 - **Transform health:** dbt test results in Airflow logs
 - **DAG SLA:** daily run completion before business hours
@@ -34,7 +34,7 @@
 2. `dbt test` failure on `stg_events` or `fct_daily_event_metrics`
 3. No checkpoint update within 24 hours for scheduled pipeline
 4. Ingestion returns zero records for 3 consecutive runs (possible upstream outage)
-5. Quarantine volume spikes (planned — see [ADR 0004](adr/0004-failed-record-quarantine.md))
+5. Quarantine volume spikes — `--alert-on-quarantine` webhook or inspect `bronze.quarantine_events`
 
 ## Retry policy
 
@@ -154,13 +154,13 @@ python -m src.pipeline.notify \
   --task-id ingest_sample_events
 ```
 
-## Failed-record quarantine (planned)
+## Failed-record quarantine
 
 Design: [ADR 0004 — failed-record quarantine](adr/0004-failed-record-quarantine.md).
 
-When implemented, invalid rows will land in `bronze.quarantine_events` instead of aborting the entire ingestion page. Until Phase 2 ships, validation failures still fail the task — treat as **High** severity if recurring.
+Invalid rows are routed to `bronze.quarantine_events` when ingestion runs with `--enable-quarantine` (enabled in the Airflow DAG). Valid rows in the same page still land in bronze. Quarantined `event_id` values are marked processed so poison-pill records are not retried indefinitely.
 
-**Planned recovery steps:**
+**Recovery steps:**
 
 1. Query quarantine rows for the pipeline run:
    ```sql
@@ -171,7 +171,18 @@ When implemented, invalid rows will land in `bronze.quarantine_events` instead o
    ```
 2. Fix upstream payload, contract rule, or required-field mapping.
 3. Replay: insert corrected row into `bronze.raw_events` or delete quarantine row and re-run ingestion (idempotent `event_id` handling prevents duplicates).
-4. Confirm silver/gold models exclude quarantined IDs via dbt source filters.
+4. Confirm silver/gold models exclude quarantined IDs via dbt source filters in `stg_events`.
+
+**CLI example:**
+
+```bash
+python -m src.pipeline.ingestion \
+  --storage postgres \
+  --pipeline-name airflow-ingestion \
+  --enable-quarantine \
+  --alert-on-quarantine \
+  --webhook-url "$PIPELINE_WEBHOOK_URL"
+```
 
 ## Escalation
 

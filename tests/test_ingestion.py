@@ -19,11 +19,21 @@ def fetch_fixture(cursor: str):
     return pages.get(cursor, ([], ""))
 
 
-def test_incremental_ingestion_is_idempotent(tmp_path: Path) -> None:
+def test_incremental_ingestion_is_idempotent(tmp_path: Path, quality_reference_time) -> None:
     checkpoint_store = FileCheckpointStore(tmp_path / "checkpoint.json")
 
-    first_run = ingest_incremental(fetch_fixture, checkpoint_store, max_pages=2)
-    second_run = ingest_incremental(fetch_fixture, checkpoint_store, max_pages=2)
+    first_run = ingest_incremental(
+        fetch_fixture,
+        checkpoint_store,
+        max_pages=2,
+        quality_now=quality_reference_time,
+    )
+    second_run = ingest_incremental(
+        fetch_fixture,
+        checkpoint_store,
+        max_pages=2,
+        quality_now=quality_reference_time,
+    )
 
     assert [record.event_id for record in first_run.records] == ["a", "b", "c"]
     assert first_run.summary.records_ingested == 3
@@ -36,10 +46,15 @@ def test_incremental_ingestion_is_idempotent(tmp_path: Path) -> None:
     assert saved.processed_ids == {"a", "b", "c"}
 
 
-def test_checkpoint_survives_partial_page(tmp_path: Path) -> None:
+def test_checkpoint_survives_partial_page(tmp_path: Path, quality_reference_time) -> None:
     checkpoint_store = FileCheckpointStore(tmp_path / "checkpoint.json")
 
-    result = ingest_incremental(fetch_fixture, checkpoint_store, max_pages=1)
+    result = ingest_incremental(
+        fetch_fixture,
+        checkpoint_store,
+        max_pages=1,
+        quality_now=quality_reference_time,
+    )
     saved = checkpoint_store.load()
 
     assert saved.cursor == "p2"
