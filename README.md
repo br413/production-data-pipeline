@@ -236,6 +236,13 @@ Coverage includes checkpoint persistence, duplicate suppression, incremental cur
 | [**Portfolio & writing**](https://br413.github.io/) | Senior DE portfolio and technical articles |
 | [**@br413**](https://github.com/br413) | Senior Data Engineer & Data Architect profile |
 
+## Writing
+
+| Article | Topic |
+|---------|-------|
+| [Building a Production Data Pipeline with Incremental Loading and dbt](https://dev.to/bobby_ray_581732c715283b2/building-a-production-data-pipeline-with-incremental-loading-and-dbt-2e2c) | Incremental checkpoints, idempotent loads, medallion layering, Airflow orchestration |
+| [Data Quality Contracts in Production Pipelines](https://dev.to/bobby_ray_581732c715283b2/data-quality-contracts-in-production-pipelines-without-a-separate-platform-team-f3) | Row-level quarantine (v0.2.1), YAML contracts, alert routing — uses this repo |
+
 ## Roadmap
 
 Tracked via GitHub Issues and milestones. Week 4 career materials:
