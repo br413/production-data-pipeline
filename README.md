@@ -173,6 +173,25 @@ Run the full demo script (Windows):
 .\scripts\run_demo.ps1
 ```
 
+### Full stack demo (with [data-quality-observability](https://github.com/br413/data-quality-observability))
+
+Ingestion and quarantine handle row-level failures; dataset contracts validate landed tables before promote:
+
+```bash
+# After postgres ingestion + dbt run above
+cd ../data-quality-observability
+python -m src.dqo.cli run --contract contracts/orders.yml --data data/samples/orders.csv --references data/samples
+```
+
+With quarantine enabled during ingestion:
+
+```bash
+python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-name sample-ingestion \
+  --enable-quarantine --alert-on-quarantine
+```
+
+See [ADR 0004](docs/adr/0004-failed-record-quarantine.md) and the [Data Quality Contracts article](https://dev.to/bobby_ray_581732c715283b2/data-quality-contracts-in-production-pipelines-without-a-separate-platform-team-f3).
+
 ## Project structure
 
 ```text
