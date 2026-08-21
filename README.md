@@ -175,13 +175,25 @@ Run the full demo script (Windows):
 
 ### Full stack demo (with [data-quality-observability](https://github.com/br413/data-quality-observability))
 
-Ingestion and quarantine handle row-level failures; dataset contracts validate landed tables before promote:
+Ingestion and quarantine handle row-level failures; dataset contracts validate landed tables before promote.
+
+Contract pins live in [`config/quality_contracts.yml`](config/quality_contracts.yml) ([ADR 0005](docs/adr/0005-quality-contract-pins.md)):
+
+```yaml
+pins:
+  orders: orders@1.0
+  customers: customers@1.0
+```
+
+After postgres ingestion + dbt run:
 
 ```bash
-# After postgres ingestion + dbt run above
 cd ../data-quality-observability
-python -m src.dqo.cli run --contract contracts/orders.yml --data data/samples/orders.csv --references data/samples
+python -m src.dqo.cli run --contract orders --data data/samples/orders.csv --references data/samples
+python -m src.dqo.cli history --contract orders   # shows v1.0 per run
 ```
+
+Registry resolution, CI guards, and versioned run history are documented in [dqo ADR 0002](https://github.com/br413/data-quality-observability/blob/main/docs/adr/0002-schema-registry-and-contract-versioning.md).
 
 With quarantine enabled during ingestion:
 

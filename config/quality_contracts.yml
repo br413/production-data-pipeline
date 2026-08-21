@@ -1,0 +1,11 @@
+# Dataset contract pins for post-ingestion quality checks (ADR 0005)
+# Format: name@version — resolved by data-quality-observability registry (ADR 0002)
+#
+# See ../data-quality-observability/contracts/registry.yml
+
+pins:
+  orders: orders@1.0
+  customers: customers@1.0
+
+dqo:
+  project_root: ../data-quality-observability
