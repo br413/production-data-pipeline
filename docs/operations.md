@@ -160,6 +160,37 @@ Design: [ADR 0004 — failed-record quarantine](adr/0004-failed-record-quarantin
 
 Invalid rows are routed to `bronze.quarantine_events` when ingestion runs with `--enable-quarantine` (enabled in the Airflow DAG). Valid rows in the same page still land in bronze. Quarantined `event_id` values are marked processed so poison-pill records are not retried indefinitely.
 
+### Quarantine volume metrics
+
+Use the metrics export after a run or during triage to see totals by validation rule and pipeline without scanning raw JSONL or writing ad hoc SQL.
+
+**File checkpoint mode:**
+
+```bash
+python -m src.pipeline.quarantine_metrics \
+  --file .checkpoints/sample.quarantine.jsonl
+```
+
+**PostgreSQL:**
+
+```bash
+python -m src.pipeline.quarantine_metrics \
+  --storage postgres \
+  --pipeline-name airflow-ingestion
+```
+
+Add `--json` for machine-readable output (dashboards, CI smoke checks).
+
+**SQL breakdown (PostgreSQL):**
+
+```sql
+SELECT failed_rule, COUNT(*) AS quarantined_rows
+FROM bronze.quarantine_events
+WHERE pipeline_name = 'airflow-ingestion'
+GROUP BY failed_rule
+ORDER BY quarantined_rows DESC;
+```
+
 **Recovery steps:**
 
 1. Query quarantine rows for the pipeline run:

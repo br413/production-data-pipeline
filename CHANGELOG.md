@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.0] - 2026-08-27
+
+### Added
+
+- Quarantine volume metrics: `python -m src.pipeline.quarantine_metrics` for JSONL and PostgreSQL stores
+- Ops runbook section with CLI examples and SQL breakdown by `failed_rule`
+- Quality contract pins ([ADR 0005](docs/adr/0005-quality-contract-pins.md)) with `config/quality_contracts.yml`
+
 ## [0.2.1] - 2026-08-11
 
 ### Added
@@ -43,6 +51,7 @@ All notable changes to this project are documented in this file.
 - Refactored ingestion to use pluggable storage adapters
 - Extended schema with `silver` and `gold` layers
 
+[0.3.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.3.0
 [0.2.1]: https://github.com/br413/production-data-pipeline/releases/tag/v0.2.1
 [0.2.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.2.0
 [0.1.0]: https://github.com/br413/production-data-pipeline/releases/tag/v0.1.0

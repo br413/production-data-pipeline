@@ -116,6 +116,8 @@ Reference implementation metrics (synthetic sample source, CI-validated):
 - [x] Unit and integration tests with CI PostgreSQL service
 - [x] CI workflow on push and pull request
 - [x] Failed-record quarantine / dead-letter path ([ADR 0004](docs/adr/0004-failed-record-quarantine.md))
+- [x] Quarantine volume metrics CLI and ops runbook breakdown ([v0.3.0](release-notes-v0.3.0.md))
+- [x] Quality contract pins ([ADR 0005](docs/adr/0005-quality-contract-pins.md))
 - [ ] Production Airflow deployment (local `airflow dags test` supported)
 
 ## Technology stack
@@ -200,9 +202,10 @@ With quarantine enabled during ingestion:
 ```bash
 python -m src.pipeline.ingestion --source sample --storage postgres --pipeline-name sample-ingestion \
   --enable-quarantine --alert-on-quarantine
+python -m src.pipeline.quarantine_metrics --storage postgres --pipeline-name sample-ingestion
 ```
 
-See [ADR 0004](docs/adr/0004-failed-record-quarantine.md) and the [Data Quality Contracts article](https://dev.to/bobby_ray_581732c715283b2/data-quality-contracts-in-production-pipelines-without-a-separate-platform-team-f3).
+See [ADR 0004](docs/adr/0004-failed-record-quarantine.md), [operations runbook](docs/operations.md#quarantine-volume-metrics), and the [Data Quality Contracts article](https://dev.to/bobby_ray_581732c715283b2/data-quality-contracts-in-production-pipelines-without-a-separate-platform-team-f3).
 
 ## Project structure
 
