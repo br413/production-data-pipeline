@@ -26,7 +26,7 @@ def test_dag_loads_without_import_errors() -> None:
 
     dag = dag_bag.get_dag("production_sample_ingestion")
     assert dag is not None
-    assert len(dag.tasks) == 2
+    assert len(dag.tasks) == 3
 
 
 def test_dag_task_dependencies() -> None:
@@ -38,4 +38,6 @@ def test_dag_task_dependencies() -> None:
 
     ingest_task = dag.get_task("ingest_sample_events")
     dbt_task = dag.get_task("run_dbt_models")
+    quality_task = dag.get_task("run_quality_contracts")
     assert dbt_task in ingest_task.downstream_list
+    assert quality_task in dbt_task.downstream_list

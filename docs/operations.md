@@ -6,6 +6,7 @@
 |-------|-----------|----------------|
 | Ingestion | `src.pipeline.ingestion` | Task failure, zero new rows unexpectedly |
 | Quality | `src.pipeline.quality.validators` | Validation error before landing |
+| Dataset contracts | `run_quality_contracts` (dqo CLI) | Contract check failure after dbt |
 | Transform | dbt silver/gold models | `dbt test` failure |
 | Quarantine | `bronze.quarantine_events` | `records_quarantined` > 0 in ingestion summary |
 | Orchestration | Airflow DAG `production_sample_ingestion` | DAG run failed / retry exhausted |
@@ -18,6 +19,7 @@
 - **Ingestion summary:** JSON block printed after each CLI run (`pages_read`, `records_ingested`, `duplicates_skipped`, `records_quarantined`, `final_cursor`)
 - **Checkpoint freshness:** `meta.pipeline_checkpoints.updated_at`
 - **Transform health:** dbt test results in Airflow logs
+- **Contract checks:** `run_quality_contracts` task after dbt (orders@1.0 and customers@1.0 via dqo)
 - **DAG SLA:** daily run completion before business hours
 
 ### Log locations

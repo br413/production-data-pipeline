@@ -34,6 +34,8 @@ dqo:
 
 Pins are documentation-first for portfolio demos; production deployments would inject `DQO_PROJECT_ROOT` and run `dqo.cli` after export/landing.
 
+The Airflow DAG `production_sample_ingestion` runs pinned contracts in `run_quality_contracts` after dbt, using sample datasets in the dqo repo (`data/samples/{name}.csv`). This is a demo-scale gate, not a query against gold tables.
+
 ## Consequences
 
 **Positive**
@@ -45,7 +47,7 @@ Pins are documentation-first for portfolio demos; production deployments would i
 **Negative**
 
 - Assumes sibling checkout layout for local demos (`../data-quality-observability`)
-- Does not auto-run dqo from the Airflow DAG yet (optional follow-on)
+- DAG contract checks use dqo sample CSVs, not exported gold tables
 
 ## References
 

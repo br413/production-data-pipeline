@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
@@ -31,6 +32,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from pipeline_callbacks import webhook_task_failure_callback  # noqa: E402
+from src.pipeline.quality_contracts import dqo_check_bash  # noqa: E402
 
 default_args = dict(DEFAULT_ARGS)
 if WEBHOOK_URL:
@@ -49,8 +51,10 @@ with DAG(
 
     1. Incrementally ingest sample API events into PostgreSQL bronze layer
     2. Run dbt silver and gold models with tests
+    3. Run pinned dataset contracts via data-quality-observability (ADR 0005)
 
     Set `PIPELINE_PROJECT_ROOT` to the repository root when deploying.
+    Optional `DQO_PROJECT_ROOT` overrides `config/quality_contracts.yml` sibling path.
     """,
 ) as dag:
     ingest_sample_events = BashOperator(
@@ -79,4 +83,13 @@ with DAG(
         },
     )
 
-    ingest_sample_events >> run_dbt_models
+    dqo_root = os.environ.get("DQO_PROJECT_ROOT")
+    run_quality_contracts = BashOperator(
+        task_id="run_quality_contracts",
+        bash_command=dqo_check_bash(
+            config_path=Path(PROJECT_ROOT) / "config" / "quality_contracts.yml",
+            dqo_project_root=Path(dqo_root) if dqo_root else None,
+        ),
+    )
+
+    ingest_sample_events >> run_dbt_models >> run_quality_contracts

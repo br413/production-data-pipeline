@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Airflow task `run_quality_contracts` after dbt — pinned dqo contracts from `config/quality_contracts.yml`
+
 ## [0.3.0] - 2026-08-27
 
 ### Added

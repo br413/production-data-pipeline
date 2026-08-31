@@ -118,6 +118,7 @@ Reference implementation metrics (synthetic sample source, CI-validated):
 - [x] Failed-record quarantine / dead-letter path ([ADR 0004](docs/adr/0004-failed-record-quarantine.md))
 - [x] Quarantine volume metrics CLI and ops runbook breakdown ([v0.3.0](release-notes-v0.3.0.md))
 - [x] Quality contract pins ([ADR 0005](docs/adr/0005-quality-contract-pins.md))
+- [x] Post-dbt dqo contract checks in the Airflow DAG
 - [ ] Production Airflow deployment (local `airflow dags test` supported)
 
 ## Technology stack
@@ -194,6 +195,8 @@ cd ../data-quality-observability
 python -m src.dqo.cli run --contract orders --data data/samples/orders.csv --references data/samples
 python -m src.dqo.cli history --contract orders   # shows v1.0 per run
 ```
+
+The Airflow DAG also runs these pins in `run_quality_contracts` after dbt (`DQO_PROJECT_ROOT` optional).
 
 Registry resolution, CI guards, and versioned run history are documented in [dqo ADR 0002](https://github.com/br413/data-quality-observability/blob/main/docs/adr/0002-schema-registry-and-contract-versioning.md).
 

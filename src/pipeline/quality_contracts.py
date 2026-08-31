@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -89,9 +90,34 @@ def dqo_run_command(
         "--contract",
         pin.cli_contract_arg(),
         "--data",
-        str(data_path),
+        Path(data_path).as_posix(),
     ]
     if references_dir is not None:
-        command.extend(["--references", str(references_dir)])
+        command.extend(["--references", Path(references_dir).as_posix()])
 
     return command
+
+
+def dqo_sample_data_path(pin: QualityContractPin) -> Path:
+    return Path("data/samples") / f"{pin.name}.csv"
+
+
+def dqo_check_bash(
+    *,
+    config_path: Path = Path("config/quality_contracts.yml"),
+    dqo_project_root: Path | None = None,
+    references_dir: Path = Path("data/samples"),
+) -> str:
+    """Build a sequential Bash command that runs every pinned dqo contract."""
+    pins, resolved_root = load_quality_contracts(config_path)
+    root = dqo_project_root or resolved_root
+    parts = [f"cd {shlex.quote(str(root))}"]
+    for pin in pins.values():
+        command = dqo_run_command(
+            pin,
+            data_path=dqo_sample_data_path(pin),
+            dqo_project_root=root,
+            references_dir=references_dir,
+        )
+        parts.append(shlex.join(command))
+    return " && ".join(parts)
